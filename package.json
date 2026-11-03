@@ -1,0 +1,14 @@
+{
+  "name": "bar-online-3d",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Phòng bar online 3D nhiều người chơi với chat và tương tác",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
