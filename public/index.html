@@ -97,4 +97,29 @@ function animate(t){requestAnimationFrame(animate);disco.rotation.y+=.012;spot.p
 requestAnimationFrame(animate);
 addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 </script>
+<!-- Thẻ phát nhạc nền -->
+<audio id="bg-music" loop>
+    <source src="./Chiều Thu Hoạ Bóng Nàng - Tbynz.mp3" type="audio/mpeg">
+</audio>
+<!-- Nút điều khiển nhạc phong cách Bar -->
+<button onclick="toggleMusic()" id="music-btn" style="position: fixed; top: 14px; right: 14px; z-index: 9999; padding: 8px 12px; background: #17172bdd; color: #fff; border: 1px solid #ffffff30; border-radius: 8px; cursor: pointer; font-weight: bold;">
+    🎵 Bật Nhạc
+</button>
+
+<script>
+function toggleMusic() {
+    const audio = document.getElementById('bg-music');
+    const btn = document.getElementById('music-btn');
+    if (audio.paused) {
+        audio.play().then(() => {
+            btn.innerText = "🔊 Đang Phát";
+            btn.style.borderColor = "#ff64d2";
+        }).catch(err => console.log(err));
+    } else {
+        audio.pause();
+        btn.innerText = "🎵 Bật Nhạc";
+        btn.style.borderColor = "#ffffff30";
+    }
+}
+</script>
 </body></html>
