@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Neon Bar Online</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#050510;color:#fff;font-family:system-ui,Arial;overflow:hidden}
+#scene{position:fixed;inset:0}#top{position:fixed;top:12px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
+.logo{font-weight:900;letter-spacing:2px;text-shadow:0 0 14px #ff36cf}.pill{background:#17172bcc;border:1px solid #ffffff25;border-radius:30px;padding:8px 13px;font-size:13px}
+#panel{position:fixed;left:14px;bottom:14px;width:min(360px,calc(100vw - 28px));background:#10101bd9;border:1px solid #ffffff25;border-radius:18px;padding:12px;backdrop-filter:blur(12px)}
+#messages{height:150px;overflow:auto;font-size:13px;line-height:1.45;margin-bottom:8px}
+.msg{margin:4px 0;color:#ddd}.sys{color:#9d9db3;font-style:italic}.msg b{color:#ff8bdd}
+#chatrow{display:flex;gap:6px}input{min-width:0;flex:1;background:#242436;color:white;border:1px solid #ffffff22;border-radius:10px;padding:10px;outline:none}
+button{background:linear-gradient(135deg,#ff329c,#8c4cff);border:0;color:white;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer}
+#actions{position:fixed;right:14px;bottom:14px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.action{background:#17172bdd;border:1px solid #ffffff30;border-radius:14px;padding:10px 13px}
+#hint{position:fixed;top:62px;left:50%;transform:translateX(-50%);font-size:12px;color:#c9c9d8;background:#10101b99;padding:7px 12px;border-radius:20px;white-space:nowrap}
+#join{position:fixed;inset:0;background:#050510ee;display:grid;place-items:center;z-index:5}
+#joinbox{width:min(340px,90vw);padding:26px;background:#141422;border:1px solid #ffffff25;border-radius:22px;text-align:center;box-shadow:0 0 50px #8a27ff35}
+#joinbox h1{margin:0 0 8px;color:#ff64d2}#joinbox p{color:#aaa;font-size:13px}
+#joinbox input{width:100%;margin:12px 0}
+#count{color:#9deaff}
+@media(max-width:600px){#messages{height:110px}#hint{top:58px;font-size:10px}#actions{bottom:190px}}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div id="top"><div class="logo">✦ NEON BAR</div><div class="pill">🪩 PHÒNG ONLINE · <span id="count">0</span> người</div></div>
+<div id="hint">W A S D / phím mũi tên để di chuyển · Space để nhảy</div>
+<div id="panel"><div id="messages"><div class="sys">Chào mừng đến Neon Bar!</div></div><div id="chatrow"><input id="chat" maxlength="180" placeholder="Nhắn gì đó..."><button id="send">Gửi</button></div></div>
+<div id="actions">
+  <button class="action" id="dance">🕺 Nhảy: Tắt</button>
+  <button class="action" data-emoji="❤️">❤️</button>
+  <button class="action" data-emoji="🔥">🔥</button>
+  <button class="action" data-emoji="🎉">🎉</button>
+  <button class="action" data-emoji="🌹">🌹</button>
+</div>
+<div id="join"><div id="joinbox"><h1>NEON BAR 🪩</h1><p>Nhập tên để bước vào sàn bar cùng mọi người</p><input id="name" maxlength="18" placeholder="Tên hiển thị"><button id="enter" style="width:100%">VÀO PHÒNG</button><p>Điều khiển bằng WASD hoặc phím mũi tên</p></div></div>
+<script src="/socket.io/socket.io.js"></script>
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+const socket = io();
+const host = document.getElementById("scene");
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x050510); scene.fog = new THREE.Fog(0x050510, 22, 48);
+const camera = new THREE.PerspectiveCamera(58, innerWidth/innerHeight, .1, 100);
+camera.position.set(0, 13, 19); camera.lookAt(0, 0, 0);
+const renderer = new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); renderer.shadowMap.enabled=true; host.appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0x9a9aff,1.1));
+const spot = new THREE.PointLight(0x8d35ff,45,35); spot.position.set(0,9,0); scene.add(spot);
+const pink = new THREE.PointLight(0xff1aa8,35,25); pink.position.set(-8,5,-3); scene.add(pink);
+const cyan = new THREE.PointLight(0x00d9ff,35,25); cyan.position.set(8,5,-3); scene.add(cyan);
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(26,22),new THREE.MeshStandardMaterial({color:0x080b1d,metalness:.65,roughness:.35})); floor.rotation.x=-Math.PI/2; floor.position.y=-.08; scene.add(floor);
+const grid = new THREE.GridHelper(26,26,0x00eaff,0x5a2bff); grid.position.y=.015; scene.add(grid);
+function box(w,h,d,x,y,z,color,emissive=color){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color,emissive,emissiveIntensity:.55,metalness:.4,roughness:.3}));m.position.set(x,y,z);scene.add(m);return m;}
+box(13,.35,1.1,0,1,-8,0x20124d,0x9b35ff);
+for(let i=0;i<13;i++){let b=box(.65,1+Math.random()*2,.35,-5.8+i*.97,1.3,-8.1,[0x1bcbff,0xff28b8,0x8c54ff][i%3]);}
+for(let i=0;i<8;i++){let beam=new THREE.Mesh(new THREE.CylinderGeometry(.025,.12,10,8),new THREE.MeshBasicMaterial({color:[0xff27bd,0x00eaff,0x8e5cff][i%3],transparent:true,opacity:.22}));beam.position.set(-8+i*2.3,4,-5);beam.rotation.z=(i-3.5)*.12;scene.add(beam);}
+const disco = new THREE.Mesh(new THREE.SphereGeometry(.85,24,18),new THREE.MeshStandardMaterial({color:0x777788,metalness:1,roughness:.12,emissive:0x252540}));disco.position.set(0,7,-3);scene.add(disco);
+for(let i=0;i<45;i++){let a=i*2.399,r=1.0+Math.random()*.2;let dot=new THREE.Mesh(new THREE.SphereGeometry(.055,8,8),new THREE.MeshBasicMaterial({color:[0xff28be,0x00eaff,0xffe45c][i%3]}));dot.position.set(Math.cos(a)*r,7+Math.sin(a)*r, -3+Math.sin(a*.7)*.35);disco.add(dot);}
+const avatars = new Map(); let selfId=null, self=null, dance=false;
+const keys={};
+function makeAvatar(p){
+ const g=new THREE.Group();
+ const body=new THREE.Mesh(new THREE.CapsuleGeometry(.34,.65,4,8),new THREE.MeshStandardMaterial({color:p.color,emissive:p.color,emissiveIntensity:.22}));body.position.y=.8;g.add(body);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.28,16,12),new THREE.MeshStandardMaterial({color:0xffd7c0}));head.position.y=1.48;g.add(head);
+ const name=document.createElement("div");name.textContent=p.name;name.style.cssText="color:white;background:#080814cc;border:1px solid #ffffff55;border-radius:10px;padding:3px 7px;font:12px system-ui;white-space:nowrap;text-shadow:0 1px 4px #000";
+ const canvas=document.createElement("canvas");canvas.width=256;canvas.height=64;const ctx=canvas.getContext("2d");ctx.fillStyle="#ffffff";ctx.font="bold 28px Arial";ctx.textAlign="center";ctx.fillText(p.name,128,42);
+ const tex=new THREE.CanvasTexture(canvas);const tag=new THREE.Mesh(new THREE.PlaneGeometry(1.5,.38),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false}));tag.position.y=2.05;g.add(tag);
+ g.position.set(p.x,0,p.z);scene.add(g);return {group:g,player:p,tag};
+}
+function upsert(p){let a=avatars.get(p.id);if(!a){a=makeAvatar(p);avatars.set(p.id,a);}a.player=p;a.group.position.set(p.x,0,p.z);}
+function addMessage(html,cls="msg"){const d=document.createElement("div");d.className=cls;d.innerHTML=html;const m=document.getElementById("messages");m.appendChild(d);m.scrollTop=m.scrollHeight;while(m.children.length>70)m.removeChild(m.firstChild);}
+function count(){document.getElementById("count").textContent=avatars.size;}
+socket.on("welcome",data=>{selfId=data.self.id;self=data.self;data.players.forEach(upsert);count();});
+socket.on("player-joined",p=>{upsert(p);count();});
+socket.on("player-moved",p=>upsert(p));
+socket.on("player-left",id=>{const a=avatars.get(id);if(a){scene.remove(a.group);avatars.delete(id);count();}});
+socket.on("system",t=>addMessage(t,"sys"));
+socket.on("chat",m=>addMessage(`<b>${escapeHtml(m.name)}:</b> ${escapeHtml(m.text)}`));
+socket.on("reaction",r=>{const a=avatars.get(r.id);if(!a)return;const c=document.createElement("canvas");c.width=128;c.height=128;const x=c.getContext("2d");x.font="90px Arial";x.textAlign="center";x.fillText(r.emoji,64,95);const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true}));s.scale.set(1.1,1.1,1);s.position.copy(a.group.position);s.position.y=2.7;scene.add(s);setTimeout(()=>scene.remove(s),1500);});
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+document.getElementById("enter").onclick=()=>{const n=document.getElementById("name").value.trim()||"Khách";socket.emit("join",n);document.getElementById("join").style.display="none";};
+document.getElementById("name").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("enter").click();});
+function send(){const i=document.getElementById("chat");if(i.value.trim())socket.emit("chat",i.value);i.value="";}
+document.getElementById("send").onclick=send;document.getElementById("chat").addEventListener("keydown",e=>{if(e.key==="Enter")send();});
+document.getElementById("dance").onclick=()=>{dance=!dance;document.getElementById("dance").textContent=dance?"💃 Nhảy: Bật":"🕺 Nhảy: Tắt";};
+document.querySelectorAll("[data-emoji]").forEach(b=>b.onclick=()=>socket.emit("reaction",b.dataset.emoji));
+addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=true;if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();});
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+let last=0;
+function animate(t){requestAnimationFrame(animate);disco.rotation.y+=.012;spot.position.x=Math.sin(t*.0007)*7;pink.position.x=Math.cos(t*.0008)*8;cyan.position.x=-pink.position.x;
+ if(self&&avatars.has(selfId)){const a=avatars.get(selfId);let dx=0,dz=0;if(keys.w||keys.arrowup)dz-=1;if(keys.s||keys.arrowdown)dz+=1;if(keys.a||keys.arrowleft)dx-=1;if(keys.d||keys.arrowright)dx+=1;if(dx||dz){const len=Math.hypot(dx,dz);self.x=Math.max(-10,Math.min(10,self.x+dx/len*.12));self.z=Math.max(-7,Math.min(7,self.z+dz/len*.12));a.group.position.set(self.x,0,self.z);a.group.rotation.y=Math.atan2(dx,dz);if(t-last>60){socket.emit("move",{x:self.x,z:self.z,dance});last=t;}}}
+ avatars.forEach((a,id)=>{if(a.player.dance||id===selfId&&dance){a.group.position.y=.08+Math.abs(Math.sin(t*.009))* .22;a.group.rotation.z=Math.sin(t*.008)*.13;}else if(id!==selfId){a.group.position.y=0;a.group.rotation.z=0;}});
+ renderer.render(scene,camera);}
+requestAnimationFrame(animate);
+addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>
+</body></html>
